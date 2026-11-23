@@ -1,0 +1,200 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>타임어택</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one full-height column. Oversized countdown in the middle, deadline label on top, a draining bar and clock readouts below. Color of the digits and bar follows the remaining time (calm, warning, critical). Single dark look by choice. */
+:root {
+  --bg: #0c1014;
+  --surface: #151b22;
+  --fg: #eaf0f6;
+  --muted: #8091a3;
+  --line: #243040;
+  --ok: #3ddba7;
+  --warn: #ffb020;
+  --crit: #ff4a4a;
+  --state: var(--ok);
+  --font-display: "Chakra Petch", "Rajdhani", "Arial Narrow", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  color-scheme: dark;
+}
+body[data-phase="warn"] { --state: var(--warn); }
+body[data-phase="crit"], body[data-phase="done"] { --state: var(--crit); }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px;
+  box-sizing: border-box;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transition: background-color .4s;
+}
+body[data-phase="crit"] { background: #150c0e; }
+body[data-phase="done"] { background: #1b0a0c; }
+
+header, footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; min-width: 0; }
+.tag {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tag b { color: var(--state); font-weight: 700; }
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+  text-align: center;
+}
+.label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: .3em;
+  font-size: clamp(.9rem, 2.4vw, 1.25rem);
+  color: var(--state);
+  text-transform: uppercase;
+}
+.digits {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--state);
+  letter-spacing: .02em;
+  white-space: nowrap;
+  font-size: clamp(3.5rem, 15vw, 12rem);
+  text-shadow: 0 0 .5em color-mix(in srgb, var(--state) 35%, transparent);
+}
+.digits.short { font-size: clamp(5rem, 25vw, 19rem); }
+body[data-phase="crit"] .digits { animation: pulse 1s ease-in-out infinite; }
+body[data-phase="done"] .digits { animation: blink .8s steps(2, jump-none) infinite; }
+@keyframes pulse { 50% { opacity: .65; } }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) {
+  .digits { animation: none !important; }
+  .bar i { transition: none !important; }
+}
+
+.bar {
+  width: min(100%, 52rem);
+  height: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--state);
+  transform-origin: left center;
+  transition: transform .5s linear;
+}
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  width: min(100%, 52rem);
+  font-size: .875rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.meta span { min-width: 0; }
+footer { font-size: .875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+footer strong { color: var(--fg); font-weight: 500; }
+</style>
+
+<header>
+  <div class="tag">타임어택</div>
+  <div class="tag">마감 <b>12:29</b></div>
+</header>
+
+<main>
+  <div class="label" id="label">남은 시간</div>
+  <div class="digits" id="digits" role="timer" aria-live="off">01:08:00</div>
+  <div class="bar" aria-hidden="true"><i id="fill"></i></div>
+  <div class="meta">
+    <span>시작 11:21</span>
+    <span id="pct">경과 0%</span>
+    <span>마감 12:29</span>
+  </div>
+</main>
+
+<footer>
+  <span>현재 시각 <strong id="now">--:--:--</strong></span>
+  <span id="note">2026년 11월 23일 (KST)</span>
+</footer>
+
+<script>
+(function () {
+  var START = new Date("2026-11-23T11:21:00+09:00").getTime();
+  var END = new Date("2026-11-23T12:29:00+09:00").getTime();
+  var TOTAL = END - START;
+
+  var elDigits = document.getElementById("digits");
+  var elLabel = document.getElementById("label");
+  var elFill = document.getElementById("fill");
+  var elPct = document.getElementById("pct");
+  var elNow = document.getElementById("now");
+
+  function p2(n) { return n < 10 ? "0" + n : "" + n; }
+
+  function fmtClock(ms) {
+    var s = Math.floor(ms / 1000) % 86400;
+    return p2(Math.floor(s / 3600)) + ":" + p2(Math.floor((s % 3600) / 60)) + ":" + p2(s % 60);
+  }
+
+  function tick() {
+    var nowMs = Date.now();
+    var left = END - nowMs;
+    var phase = "ok";
+    if (left <= 0) phase = "done";
+    else if (left <= 3 * 60000) phase = "crit";
+    else if (left <= 10 * 60000) phase = "warn";
+    document.body.setAttribute("data-phase", phase);
+
+    var secs = left > 0 ? Math.ceil(left / 1000) : 0;
+    var h = Math.floor(secs / 3600);
+    var m = Math.floor((secs % 3600) / 60);
+    var s = secs % 60;
+    var text = h > 0 ? p2(h) + ":" + p2(m) + ":" + p2(s) : p2(m) + ":" + p2(s);
+    elDigits.textContent = text;
+    elDigits.classList.toggle("short", h === 0);
+
+    var ratio = Math.max(0, Math.min(1, left / TOTAL));
+    elFill.style.transform = "scaleX(" + ratio.toFixed(4) + ")";
+    elPct.textContent = "경과 " + Math.round((1 - ratio) * 100) + "%";
+
+    if (phase === "done") elLabel.textContent = "TIME UP";
+    else if (phase === "crit") elLabel.textContent = "마감 임박";
+    else if (phase === "warn") elLabel.textContent = "10분 이내";
+    else elLabel.textContent = "남은 시간";
+
+    // Clock in Korea Standard Time regardless of the viewer's zone.
+    elNow.textContent = fmtClock(nowMs + 9 * 3600000);
+    document.title = phase === "done" ? "타임어택 · TIME UP" : "타임어택 · " + text;
+  }
+
+  tick();
+  setInterval(tick, 250);
+})();
+</script>
+
+</body></html>
